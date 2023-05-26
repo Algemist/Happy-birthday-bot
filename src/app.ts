@@ -1,10 +1,52 @@
-// import axios from 'axios';
-// import { WebClient } from '@slack/web-api';
-import { RTMClient } from '@slack/rtm-api';
+import { WebClient } from '@slack/web-api';
+import { getHappyBirthdayInfo } from "./api/getHappyBirthdayInfo";
+import { prepareEmployeeInfo } from "./helpers/prepareEmployeeInfo";
+import { ACCESS_SLACK_TOKEN } from "./consts";
 
-// const slack = new WebClient('xoxb-5321610536389-5322689886101-cAVLN3JVurMroz3ov69EKTCm');
-const rtm = new RTMClient('xoxb-5321610536389-5322689886101-cAVLN3JVurMroz3ov69EKTCm');
+const slack = new WebClient(ACCESS_SLACK_TOKEN);
 
-rtm.on('ready', async () => {
-    console.log('bot started')
-})
+async function sendNotifications() {
+   try {
+       const data = await getHappyBirthdayInfo();
+
+       if (data.length === 0) {
+           console.log("Не пришла информация с апи");
+           return;
+       }
+
+       for (const value of data) {
+           const supervisorSlackId = await getSlackIdByEmail(value.rukovoditel);
+
+           if (!supervisorSlackId) {
+               return;
+           }
+
+           if (value.sotrudniki.length === 0) {
+               console.log(`У руководителя ${value.rukovoditel} нету сотрудников, у которых сегодня день рождения`);
+               return;
+           }
+
+           const text = prepareEmployeeInfo(value.sotrudniki);
+
+           await slack.chat.postMessage({
+               channel: supervisorSlackId,
+               text: text
+           })
+
+       }
+   } catch (error) {
+       console.log(error);
+   }
+}
+
+export async function getSlackIdByEmail(email: string): Promise<string | null> {
+    const data = await slack.users.lookupByEmail({
+        email,
+    });
+
+    if (data.user && data.user.id) {
+        return data.user.id;
+    }
+
+    return null;
+}
