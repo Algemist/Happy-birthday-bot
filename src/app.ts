@@ -50,3 +50,8 @@ export async function getSlackIdByEmail(email: string): Promise<string | null> {
 
     return null;
 }
+
+// Отсчитывает 24 часа с момента запуска скрипта.
+// Можно сделать реализацию отправки уведомлений в конкретное время
+
+setInterval(sendNotifications, 24 * 60 * 60 * 1000);
